@@ -1327,6 +1327,65 @@ components:
           type: string
         jellyfinMediaId4k:
           type: string
+        downloadStatus:
+          type: array
+          readOnly: true
+          nullable: true
+          items:
+            $ref: '#/components/schemas/DownloadingItem'
+        downloadStatus4k:
+          type: array
+          readOnly: true
+          nullable: true
+          items:
+            $ref: '#/components/schemas/DownloadingItem'
+    NullSeerrQueueResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NullSeerrQueueItem'
+    NullSeerrQueueItem:
+      type: object
+      properties:
+        tmdbId:
+          type: integer
+          nullable: true
+        mediaType:
+          type: string
+        is4k:
+          type: boolean
+        status:
+          type: string
+        progress:
+          type: number
+          format: double
+        timeLeft:
+          type: string
+          nullable: true
+        blocker:
+          type: string
+          nullable: true
+        swarmHealth:
+          type: string
+          nullable: true
+    DownloadingItem:
+      type: object
+      properties:
+        title:
+          type: string
+        size:
+          type: number
+        sizeLeft:
+          type: number
+        status:
+          type: string
+        timeLeft:
+          type: string
+        estimatedCompletionTime:
+          type: string
     Cast:
       type: object
       properties:
@@ -6889,6 +6948,21 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MediaInfo'
+  /media/queue:
+    get:
+      operationId: mediaQueueGet
+      summary: Get the Null-seerr download queue
+      tags:
+        - media
+      responses:
+        '200':
+          description: Queue snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NullSeerrQueueResponse'
+        '404':
+          description: This server does not implement the Null-seerr queue
   /media/{mediaId}:
     delete:
       summary: Delete media item

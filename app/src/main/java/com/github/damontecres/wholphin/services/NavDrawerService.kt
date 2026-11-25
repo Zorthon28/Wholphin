@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.data.ServerPreferencesDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinUser
@@ -50,7 +51,6 @@ class NavDrawerService
         private val api: ApiClient,
         private val serverRepository: ServerRepository,
         private val serverPreferencesDao: ServerPreferencesDao,
-        private val seerrServerRepository: SeerrServerRepository,
         private val musicService: MusicService,
     ) {
         private val _state = MutableStateFlow(NavDrawerItemState())
@@ -61,19 +61,17 @@ class NavDrawerService
             combine(
                 serverRepository.currentUserFlow,
                 serverRepository.currentUserDtoFlow,
-                seerrServerRepository.active,
-            ) { user, userDto, discoverActive ->
-                Triple(user, userDto, discoverActive)
-            }.collectLatestIn(coroutineScope) { (user, userDto, discoverActive) ->
+            ) { user, userDto ->
+                user to userDto
+            }.collectLatestIn(coroutineScope) { (user, userDto) ->
                 Timber.d(
-                    "User updated: user=%s, userDto=%s, discoverActive=%s",
+                    "User updated: user=%s, userDto=%s",
                     user?.id,
                     userDto?.id,
-                    discoverActive,
                 )
                 try {
                     if (user != null && userDto != null && user.id == userDto.id) {
-                        updateNavDrawer(user, userDto, discoverActive)
+                        updateNavDrawer(user, userDto)
                     } else {
                         _state.update { NavDrawerItemState() }
                     }
@@ -190,12 +188,11 @@ class NavDrawerService
         suspend fun updateNavDrawer(
             user: JellyfinUser,
             userDto: ServerUserConfig,
-            discoverActive: Boolean,
         ) {
             val builtins =
                 buildList {
                     add(NavDrawerItem.Favorites)
-                    if (discoverActive) add(NavDrawerItem.Discover)
+                    if (BuildConfig.DISCOVER_ENABLED) add(NavDrawerItem.Discover)
                 }
             val allLibraries = getAllUserLibraries(user.id, userDto.tvAccess)
             val libraries =
@@ -231,11 +228,14 @@ class NavDrawerService
                 // Sort by order if non-default, existing items before customize will have -1 value
                 // New items from the server will get Int.MAX_VALUE
                 // Items the user doesn't have access to anymore will be skipped
-                .sortedBy { navDrawerPins[it.id]?.order?.takeIf { it >= 0 } ?: Int.MAX_VALUE }
+                .sortedBy {
+                    if (it == NavDrawerItem.Discover) Int.MIN_VALUE
+                    else navDrawerPins[it.id]?.order?.takeIf { order -> order >= 0 } ?: Int.MAX_VALUE
+                }
                 .forEach {
                     // Assume pinned if unknown
                     val pinned = navDrawerPins[it.id]?.type ?: NavPinType.PINNED
-                    if (pinned == NavPinType.PINNED) {
+                    if (it == NavDrawerItem.Discover || pinned == NavPinType.PINNED) {
                         items.add(it)
                     } else {
                         moreItems.add(it)

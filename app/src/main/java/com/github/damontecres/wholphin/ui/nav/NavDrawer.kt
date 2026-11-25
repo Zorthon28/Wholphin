@@ -242,7 +242,7 @@ sealed interface NavDrawerItem {
         override val id: String
             get() = "a_discover"
 
-        override fun name(context: Context): String = context.getString(R.string.discover)
+        override fun name(context: Context): String = context.getString(R.string.explore)
     }
 }
 
