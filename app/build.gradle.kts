@@ -156,6 +156,14 @@ configure<ApplicationExtension> {
             setFeatureFlag(featureUpdate, false)
             setFeatureFlag(featureDiscover, true)
         }
+        create("tcl") {
+            dimension = "version"
+            applicationIdSuffix = ".tcl"
+            versionNameSuffix = "-tcl"
+            manifestPlaceholders += mapOf(featureLeanback to true)
+            setFeatureFlag(featureUpdate, false)
+            setFeatureFlag(featureDiscover, true)
+        }
         create("firetv") {
             dimension = "version"
             manifestPlaceholders += mapOf(featureLeanback to true)

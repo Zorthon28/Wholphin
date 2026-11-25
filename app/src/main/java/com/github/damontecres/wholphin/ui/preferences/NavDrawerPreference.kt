@@ -46,7 +46,6 @@ import com.github.damontecres.wholphin.data.model.NavPinType
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
-import com.github.damontecres.wholphin.services.SeerrServerRepository
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.BasicDialog
@@ -61,7 +60,6 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -304,7 +302,6 @@ class NavDrawerPreferencesViewModel
         private val serverRepository: ServerRepository,
         private val navDrawerService: NavDrawerService,
         private val serverPreferencesDao: ServerPreferencesDao,
-        private val seerrServerRepository: SeerrServerRepository,
     ) : ViewModel() {
         val state = MutableStateFlow<List<NavDrawerPin>>(listOf())
 
@@ -312,8 +309,7 @@ class NavDrawerPreferencesViewModel
             viewModelScope.launchDefault {
                 val state = navDrawerService.state.value
                 val user = serverRepository.currentUser
-                val seerr = seerrServerRepository.active.firstOrNull()
-                if (user == null || seerr == null) {
+                if (user == null) {
                     return@launchDefault
                 }
                 val navDrawerPins =
@@ -324,22 +320,12 @@ class NavDrawerPreferencesViewModel
                     }
                 val allItems = state.let { it.items + it.moreItems }
                 val pins =
-                    allItems
+                    allItems.filterNot { it == NavDrawerItem.Discover }
                         .sortedBy {
                             navDrawerPins[it.id]?.order?.takeIf { it >= 0 } ?: Int.MAX_VALUE
-                        }.mapNotNull {
-                            if (!seerr && it is NavDrawerItem.Discover) {
-                                null
-                            } else {
-                                // Assume pinned if unknown
-                                val pinned = navDrawerPins[it.id]?.type ?: NavPinType.PINNED
-                                NavDrawerPin(
-                                    it.id,
-                                    it.name(context),
-                                    pinned == NavPinType.PINNED,
-                                    it,
-                                )
-                            }
+                        }.map {
+                            val pinned = navDrawerPins[it.id]?.type ?: NavPinType.PINNED
+                            NavDrawerPin(it.id, it.name(context), pinned == NavPinType.PINNED, it)
                         }
                 this@NavDrawerPreferencesViewModel.state.value = pins
             }
@@ -364,8 +350,7 @@ class NavDrawerPreferencesViewModel
                                     )
                                 }
                             serverPreferencesDao.saveNavDrawerPinnedItems(*toSave.toTypedArray())
-                            val discoverActive = seerrServerRepository.active.firstOrNull() == true
-                            navDrawerService.updateNavDrawer(user, userDto, discoverActive)
+                            navDrawerService.updateNavDrawer(user, userDto)
                         } else {
                             throw IllegalStateException("User IDs do not match")
                         }
